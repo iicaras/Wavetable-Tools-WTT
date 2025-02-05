@@ -4,8 +4,8 @@ This is a toolset for converting and processing wavetables in `.wav` and `.wt` f
 
 Available tools are:
 
-- printinfo: Print format-information to the console. For `.wt` import, some data is assumed to be able to export to `.wav`.
-- wttowav: Convert `.wt` wavetables to `.wav` formatl.
+- printinfo: Print format information to the console. For `.wt` import, some data is assumed to be able to export to `.wav`.
+- wttowav: Convert `.wt` wavetables to `.wav` format.
 - wavtowt: Convert `.wav` wavetables to `.wt` format.
 - addclm: Add `clm ` data to `.wav` wavetables and export to `..._addclm.wav`. 
 - slicer: Export individual cycles of a wavetable to a folder.
