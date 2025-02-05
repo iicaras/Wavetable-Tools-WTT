@@ -14,6 +14,8 @@ Available tools are:
 Work in progress:
 - combiner: Imports individual cycles from a folder and exports to a single wavetable file.
 
+See [this article](https://gist.github.com/iicaras/f63dc9fcc3f9a83ccaf2de3fbc9fbb5a) for format specifications and creation guides.
+
 ## printinfo
 
 ```
