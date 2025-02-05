@@ -1,6 +1,6 @@
 # Wavetable Tools (WTT)
 
-This is a toolset for converting and processing wavetables of `.wav` and `.wt` formats. It is not a tool with which wavetables can be created from scratch.
+This is a toolset for converting and processing wavetables in `.wav` and `.wt` formats. It is not a tool for creating wavetables from scratch, and it is still a work in progress. As such, please use it carefully. 
 
 Available tools are:
 
