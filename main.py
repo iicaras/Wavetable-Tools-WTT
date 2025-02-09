@@ -323,7 +323,7 @@ def get_clas(arg=None):
     subparser_add_clm.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
     subparser_add_clm.add_argument('--wavesize', type=int, default=2048, help='int: Samples per wave cycle. Default: 2048.')
     subparser_add_clm.add_argument('--waveinterp', type=int, default=0, help='int: Interpolation between cycles. Default: 0.')
-    subparser_add_clm.add_argument('--wavevendor', type=str, default=b'wavetable (wavetabletools)', help='str: Comment at the end of clm chunk. Default: b\'wavetable (wavetabletools)\'.')
+    subparser_add_clm.add_argument('--wavevendor', type=str, default='wavetable (wavetabletools)', help='str: Comment at the end of clm chunk. Default: \'wavetable (wavetabletools)\'.')
 
     subparser_slicer        = subparsers.add_parser('slicer', help='Slice wavetables and export individual cycles to {inpath}/#.wav.')
     subparser_slicer.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav or wt file(s) or directory(-ies).')
@@ -367,6 +367,7 @@ def handler_file_dir(inpaths_from_args):
         else:
             log.error('Given inpath is not a file or directory.')
             exit()
+    log.debug(inpaths)
     return inpaths
 
 
@@ -541,7 +542,7 @@ def dedupe(args):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s]: %(message)s')  # filename='main.log'
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s]: %(message)s')  # filename='main.log'
     log = logging.getLogger(__name__)
     try:
         args = get_clas()
