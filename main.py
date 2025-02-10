@@ -322,7 +322,7 @@ def get_clas(arg=None):
     subparser_add_clm.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
     subparser_add_clm.add_argument('--wavesize', type=int, help='int: Samples per wave cycle. Default: 2048.')
     subparser_add_clm.add_argument('--waveinterp', type=int, help='int: Interpolation between cycles. Default: 0.')
-    subparser_add_clm.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk. Default: \'wavetable (wavetabletools)\'.')
+    subparser_add_clm.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk. Default if no prior clm info in the wavetable: \'wavetable (wavetabletools)\'.')
 
     subparser_slicer        = subparsers.add_parser('slicer', help='Slice wavetables and export individual cycles to {inpath}/#.wav.')
     subparser_slicer.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav or wt file(s) or directory(-ies).')
@@ -336,11 +336,12 @@ def get_clas(arg=None):
     subparser_dedupe  = subparsers.add_parser('dedupe', help='Remove duplicate cycles.')
     subparser_dedupe.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to directory(-ies).')
     subparser_dedupe.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
-    subparser_dedupe.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk. Default: \'wavetable (wavetabletools)\'.')
+    subparser_dedupe.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk.')
     return parser.parse_args(arg)
 
 
 def main(args):
+    log.info('WTT Version 2025021000.')
     match args.programme:
         case 'printinfo'    : print_info(args)
         case 'wttowav'      : wt_to_wav(args)
