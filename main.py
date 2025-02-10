@@ -333,7 +333,7 @@ def get_clas(arg=None):
     subparser_combiner.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to directory(-ies).')
     subparser_combiner.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
 
-    subparser_dedupe  = subparsers.add_parser('dedupe', help='Remove duplicate cycles.')
+    subparser_dedupe  = subparsers.add_parser('dedupe', help='Remove duplicate cycles, which will be written to {inpath}_dedupe.wav..')
     subparser_dedupe.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to directory(-ies).')
     subparser_dedupe.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
     subparser_dedupe.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk.')
@@ -341,7 +341,7 @@ def get_clas(arg=None):
 
 
 def main(args):
-    log.info('WTT Version 2025021000.')
+    log.info('WTT Version 2025021001.')
     match args.programme:
         case 'printinfo'    : print_info(args)
         case 'wttowav'      : wt_to_wav(args)
@@ -456,9 +456,9 @@ def add_clm(args):
             log.warning('File skipped.')
             continue
         log.info('Set clm data.')
-        if args.waveinterp:
+        if args.waveinterp is not None:
             wavetable_instance.wave_interp = args.waveinterp
-        if args.wavesize:
+        if args.wavesize is not None:
             wavetable_instance.wave_size   = args.wavesize
         if args.wavevendor:
             wavetable_instance.wave_vendor = args.wavevendor.encode(encoding='ansi')
