@@ -406,9 +406,6 @@ def wt_to_wav(args):
             log.warning(f'{inpath} is not a wt file.')
             continue
         outpath = os.path.abspath(os.path.splitext(inpath)[0] + '.wav')
-        if not overwrite(outpath, args.forceoverwrite):
-            log.warning('File Skipped.')
-            continue
         wavetable_instance = Wavetable()
         skip = wavetable_instance.wt_import(inpath)
         if skip:
@@ -416,6 +413,9 @@ def wt_to_wav(args):
             continue
         wavetable_instance.wave_vendor = args.wavevendor.encode(encoding='ansi') if args.wavevendor else wavetable_instance.wave_vendor
         wavetable_instance.print_wavetable_info()
+        if not overwrite(outpath, args.forceoverwrite):
+            log.warning('File Skipped.')
+            continue
         wavetable_instance.wav_write(outpath)
 
 
@@ -428,15 +428,15 @@ def wav_to_wt(args):
             log.warning(f'{inpath} is not a wav file.')
             continue
         outpath = os.path.abspath(os.path.splitext(inpath)[0] + '.wt')
-        if not overwrite(outpath, args.forceoverwrite):
-            log.warning('File Skipped.')
-            continue
         wavetable_instance = Wavetable()
         skip = wavetable_instance.wav_import(inpath)
         if skip:
             log.warning('File skipped.')
             continue
         wavetable_instance.print_wavetable_info()
+        if not overwrite(outpath, args.forceoverwrite):
+            log.warning('File Skipped.')
+            continue
         wavetable_instance.wt_write(outpath)
 
 
@@ -449,19 +449,22 @@ def add_clm(args):
             log.warning(f'{inpath} is not a wav file.')
             continue
         outpath = os.path.abspath(os.path.splitext(inpath)[0] + '_addclm.wav')
-        if not overwrite(outpath, args.forceoverwrite):
-            log.warning('File Skipped.')
-            continue
         wavetable_instance = Wavetable()
         skip = wavetable_instance.wav_import(inpath)
         if skip:
             log.warning('File skipped.')
             continue
+        log.info('Set clm data.')
+        if args.waveinterp:
+            wavetable_instance.wave_interp = args.waveinterp
+        if args.wavesize:
+            wavetable_instance.wave_size   = args.wavesize
+        if args.wavevendor:
+            wavetable_instance.wave_vendor = args.wavevendor.encode(encoding='ansi')
         wavetable_instance.print_wavetable_info()
-        log.info('Set clm data:')
-        wavetable_instance.wave_size   = args.wavesize if args.wavesize else wavetable_instance.wave_size
-        wavetable_instance.wave_interp = args.waveinterp if args.waveinterp else wavetable_instance.wave_interp
-        wavetable_instance.wave_vendor = args.wavevendor.encode(encoding='ansi') if args.wavevendor else wavetable_instance.wave_vendor
+        if not overwrite(outpath, args.forceoverwrite):
+            log.warning('File Skipped.')
+            continue
         wavetable_instance.wav_write(outpath)
 
 
@@ -472,9 +475,6 @@ def slicer(args):
         log.info('')
         inpath_no_ext, ext = os.path.splitext(inpath)
         outpath_folder = os.path.abspath(inpath_no_ext + ext.replace('.', '_') + '_cycles')
-        if not overwrite(outpath_folder, args.forceoverwrite):
-            log.warning('File Skipped.')
-            continue
         wavetable_instance = Wavetable()
         if inpath.endswith('.wav'):
             skip = wavetable_instance.wav_import(inpath)
@@ -486,10 +486,13 @@ def slicer(args):
         if skip:
             log.warning('File skipped.')
             continue
-        wavetable_instance.print_wavetable_info()
         if args.wavesize is not None:
             wavetable_instance.wave_size = args.wavesize
             log.info(f'Set wave_size: {wavetable_instance.wave_size}')
+        wavetable_instance.print_wavetable_info()
+        if not overwrite(outpath_folder, args.forceoverwrite):
+            log.warning('File Skipped.')
+            continue
         wavetable_instance.wav_export_cycles(outpath_folder)
 
 
@@ -505,24 +508,21 @@ def dedupe(args):
         wavetable_instance = Wavetable()
         if inpath.endswith('.wav'):
             outpath = os.path.abspath(os.path.splitext(inpath)[0] + '_dedupe.wav')
-            if not overwrite(outpath, args.forceoverwrite):
-                log.warning('File Skipped.')
-                continue
             skip = wavetable_instance.wav_import(inpath)
             if skip:
                 log.warning('File skipped.')
                 continue
-            wavetable_instance.print_wavetable_info()
             no_dupe = wavetable_instance.deduplicator()
             if no_dupe:
                 continue
             wavetable_instance.wave_vendor = args.wavevendor.encode(encoding='ansi') if args.wavevendor else wavetable_instance.wave_vendor
-            wavetable_instance.wav_write(outpath)
-        elif inpath.endswith('.wt'):
-            outpath = os.path.abspath(os.path.splitext(inpath)[0] + '_dedupe.wt')
+            wavetable_instance.print_wavetable_info()
             if not overwrite(outpath, args.forceoverwrite):
                 log.warning('File Skipped.')
                 continue
+            wavetable_instance.wav_write(outpath)
+        elif inpath.endswith('.wt'):
+            outpath = os.path.abspath(os.path.splitext(inpath)[0] + '_dedupe.wt')
             skip = wavetable_instance.wt_import(inpath)
             if skip:
                 log.warning('File skipped.')
@@ -530,6 +530,9 @@ def dedupe(args):
             wavetable_instance.print_wavetable_info()
             no_dupe = wavetable_instance.deduplicator()
             if no_dupe:
+                continue
+            if not overwrite(outpath, args.forceoverwrite):
+                log.warning('File Skipped.')
                 continue
             wavetable_instance.wt_write(outpath)
         else:
