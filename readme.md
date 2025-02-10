@@ -37,14 +37,17 @@ python main.py printinfo "Basic Shapes.wav"
 ## wttowav
 
 ```
-usage: main.py wttowav [-h] [-f] inpath [inpath ...]
+usage: main.py wttowav [-h] [-f] [--wavevendor WAVEVENDOR] inpath [inpath ...]
 
 positional arguments:
   inpath                str: Input path(s) to wt file(s) or directory(-ies).
 
 options:
   -h, --help            show this help message and exit
-  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
+  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default:
+                        false.
+  --wavevendor WAVEVENDOR
+                        str: Comment at the end of clm chunk. Default: 'wavetable (wavetabletools)'.
 ```
 
 Example:
@@ -75,19 +78,23 @@ python main.py wavtowt "Basic Shapes.wav"
 ## addclm
 
 ```
-usage: main.py addclm [-h] [-f] [--wavesize WAVESIZE] [--waveinterp WAVEINTERP] [--wavevendor WAVEVENDOR] inpath [inpath ...]
+usage: main.py addclm [-h] [-f] [--wavesize WAVESIZE] [--waveinterp WAVEINTERP]
+                      [--wavevendor WAVEVENDOR]
+                      inpath [inpath ...]
 
 positional arguments:
   inpath                str: Input path(s) to wav file(s) or directory(-ies).
 
 options:
   -h, --help            show this help message and exit
-  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
+  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default:
+                        false.
   --wavesize WAVESIZE   int: Samples per wave cycle. Default: 2048.
   --waveinterp WAVEINTERP
                         int: Interpolation between cycles. Default: 0.
   --wavevendor WAVEVENDOR
-                        str: Comment at the end of clm chunk. Default: b'wavetable (wavetabletools)'.
+                        str: Comment at the end of clm chunk. Default if no prior clm info in the
+                        wavetable: 'wavetable (wavetabletools)'.
 ```
 
 Example:
@@ -119,14 +126,17 @@ python main.py slicer "Basic Shapes.wav"
 ## dedupe
 
 ```
-usage: main.py dedupe [-h] [-f] inpath [inpath ...]
+usage: main.py dedupe [-h] [-f] [--wavevendor WAVEVENDOR] inpath [inpath ...]
 
 positional arguments:
   inpath                str: Input path(s) to directory(-ies).
 
 options:
   -h, --help            show this help message and exit
-  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
+  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default:
+                        false.
+  --wavevendor WAVEVENDOR
+                        str: Comment at the end of clm chunk.
 ```
 
 Example:
