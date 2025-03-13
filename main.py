@@ -1,8 +1,8 @@
-"""Add combiner, which would take all numbered wav files from a folder and make a wavetable from it.
-"""
 import logging
 import argparse
 import os
+import sys
+import json
 
 
 class Wavetable():
@@ -13,7 +13,7 @@ class Wavetable():
         - fmt_bytes_p_block     [int]       Bytes per Block (Number of Channels * Bits per sample / 8). Stored for the convenience of easy access when needed.
         - fmt_bytes_p_sec       [int]       Bytes to Read per Second (Sample Rate * Bytes per Block). Stored for the convenience of easy access when needed.
         - fmt_channels          [int]       Number of Channels such as left and right. 1 is preferred and assumed for wt import.
-        - fmt_sample_rate       [int]       Samples per Second. 44100 samples/s is preferred. Vital exports as 88200 samples/sec. In principle it doesn't really matter since wave_size matters more for the synth.
+        - fmt_sample_rate       [int]       Samples per Second. 88200 samples/s is preferred. Vital exports as 88200 samples/sec. In principle it doesn't really matter since wave_size matters more for the synth.
         - wave_count            [int]       Number of wave cycles in the sample data.
         - wave_interp           [int]       Interpolation between cycles. 0 = no interpolation, 1 = linear crossfades, 2,3,4 = spectral morph. It's just metadata and doesn't say anything about the sample data itself.
         - wave_size             [int]       Samples per wave cycle. 2048 is the standard but any power of 2 is usually easily read.
@@ -29,7 +29,7 @@ class Wavetable():
     The wt format essentially stores the same PCM data, however, with different header information. When reading wt, the following data is assumed:
         - fmt_audio_format  = 1
         - fmt_channels      = 1
-        - fmt_sample_rate   = 44100
+        - fmt_sample_rate   = 88200
         - fmt_bytes_p_block = int(self.fmt_channels * self.fmt_bits_p_sample / 8)
         - fmt_bytes_p_sec   = int(self.fmt_sample_rate * self.fmt_bytes_p_block)
         - wave_interp       = 0
@@ -56,6 +56,33 @@ class Wavetable():
         self.wave_size         = 2048                                           # Set default clm
         self.wave_vendor       = b'wavetable (wavetabletools)'                  # Set default clm
 
+    def set_data(self, fmt_audio_format=None, fmt_bits_p_sample=None, fmt_bytes_p_block=None, fmt_bytes_p_sec=None, fmt_channels=None, fmt_sample_rate=None, wave_count=None, wave_interp=None, wave_size=None, wave_vendor=None, recalc=False):
+        if fmt_audio_format is not None:
+            self.fmt_audio_format = fmt_audio_format
+        if fmt_bits_p_sample is not None:
+            self.fmt_bits_p_sample = fmt_bits_p_sample
+        if fmt_bytes_p_block is not None:
+            self.fmt_bytes_p_block = fmt_bytes_p_block
+        if fmt_bytes_p_sec is not None:
+            self.fmt_bytes_p_sec = fmt_bytes_p_sec
+        if fmt_channels is not None:
+            self.fmt_channels = fmt_channels
+        if fmt_sample_rate is not None:
+            self.fmt_sample_rate = fmt_sample_rate
+        if wave_count is not None:
+            self.wave_count = wave_count
+        if wave_interp is not None:
+            self.wave_interp = wave_interp
+        if wave_size is not None:
+            self.wave_size = wave_size
+        if wave_vendor is not None:
+            self.wave_vendor = wave_vendor.encode(encoding='ansi')
+
+        if recalc is True:
+            self.fmt_bytes_p_block = self.calc_fmt_bytes_p_block()
+            self.fmt_bytes_p_sec   = self.calc_fmt_bytes_p_sec()
+            self.wave_count        = self.calc_wave_count()
+
     def wav_import(self, file_path):
         """Reads byte per byte until it finds a chunk header. open_file.seek(-3, os.SEEK_CUR) in wav_parse_chunk() ensures this.
         return: True if file needs to be skipped due to unsupported format. Else None.
@@ -63,10 +90,10 @@ class Wavetable():
         log.info(f'Reading {file_path}')
         with open(file_path, 'rb') as open_file:
             while True:
-                chunk_id = open_file.read(4)
-                if not len(chunk_id) == 4:
-                    break
-                stop_importing = self.wav_parse_chunk(open_file, chunk_id)
+                chunk_id = open_file.read(4)                                    # Read chunks of 4 bytes at a time to recognise headers
+                if not len(chunk_id) == 4:                                      # At end of iteration, cursor moves back
+                    break                                                       # End of file means len(chunk_id) decreases => EoF indicator
+                stop_importing = self.wav_parse_chunk(open_file, chunk_id)      # Func returns true if import failed
                 if stop_importing:
                     return True
         if self.wave_size:
@@ -97,7 +124,7 @@ class Wavetable():
             clm_size = int.from_bytes(open_file.read(4), 'little')              # [4] clm chunk size -8 Bytes
             clm_data = open_file.read(clm_size)                                 # [#] clm ansi bytestring data
             self.wave_size   = int(clm_data[3:7])                               # Samples per wave
-            self.wave_interp = int(clm_data[8:9])                               # Vital: 0: None. 1: Time. 2, 3, 4: Spectral.
+            self.wave_interp = int(clm_data[8:9])                               # 0: None. 1: Linear/Time. 2, 3, 4: Spectral.
             self.wave_vendor = clm_data[17:]                                    # Vendor bytestring
 
         elif self.is_data(chunk_id):                                            # [4] data
@@ -136,21 +163,23 @@ class Wavetable():
             self.wave_count = int.from_bytes(open_file.read(2), 'little')       # [2] Number of waves
 
             flags = int.from_bytes(open_file.read(2), 'little')                 # [2] Flags
-            stop_importing = self.wt_parse_flags(flags)
+            stop_importing = self.wt_parse_flags(flags)                         # Func returns true if import failed
             if stop_importing:
                 return True
 
             self.data_samples = open_file.read(-1)                              # [#] Sample Data
 
             log.info('Assume \'fmt \' chunk data, wave_interp = 0, and add wave_vendor b\'wavetable (wavetabletools)\'.')
-            self.fmt_audio_format  = 1                                          # Audio Format. 01: PCM, 11: IEEE 754 Float
-            self.fmt_channels      = 1                                          # Number of Channels
-            self.fmt_sample_rate   = 44100                                      # Samples per Second
-            self.fmt_bytes_p_block = self.calc_fmt_bytes_p_block()              # Bytes per Block (Number of Channels * Bits per sample / 8)
-            self.fmt_bytes_p_sec   = self.calc_fmt_bytes_p_sec()                # Bytes to Read per Second (Sample Rate * Bytes per Block)
+            self.set_data(recalc=True, fmt_audio_format=1, fmt_channels=1, fmt_sample_rate=88200)
 
     def wt_parse_flags(self, flags):
         """return: True if file needs to be skipped due to unsupported format. Else None.
+        Flag is a 2-byte integer of which the first 4 bits determine the flag.
+        ABCD;
+            A: is_sample
+            B: is_looped
+            C: is_int16
+            D: is_full_range    
         """
         if self.is_sample(flags):                                               # Is sample or wavetable
             log.warning('Wavetable is a sample.')
@@ -190,10 +219,10 @@ class Wavetable():
         return int(len(self.data_samples) / (self.wave_size * self.fmt_bytes_p_block))
 
     def wav_write(self, file_path):
-        clm_string = f'<!>{self.wave_size} {self.wave_interp}0000000 '
-        clm_data   = clm_string.encode(encoding='ansi') + self.wave_vendor
+        clm_string = f'<!>{self.wave_size} {self.wave_interp}0000000 '.encode(encoding='ansi')
+        clm_data   = clm_string + self.wave_vendor
         if len(clm_data) % 2 == 1:
-            clm_data += bytes.fromhex('00')                                     # Vital desn't read the wavetable properly when its length is odd.
+            clm_data += bytes.fromhex('00')                                     # Vital desn't read the wavetable properly when its length is odd
         log.info(f'Writing {file_path}.')
         with open(file_path, 'wb') as open_file:
             log.info('    Writing riff.')
@@ -303,54 +332,83 @@ def get_clas(arg=None):
     desc   = 'Wavetable Tools: Various tools to convert or process wavetables in wav or wt format.'
     parser = argparse.ArgumentParser(prog='main.py', description=desc, epilog='')
 
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
+    common_parser.add_argument('--samplerate', type=int, help='int: Change sample rate. This does not resample the file. Sample rate is meaningless for the wavetable due to wave_size, but a higher sample rate will playback a higher note outside of wavetable synths.')
+    common_parser.add_argument('--waveinterp', type=int, help='int: Interpolation between cycles. Default: 0.')
+    common_parser.add_argument('--wavesize', type=int, help='int: Samples per wave cycle. If not present in .wav clm data, this needs to be supplied.')
+    common_parser.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk.')
+
     subparsers = parser.add_subparsers(dest="programme", help='Available programmes.')
 
-    subparsers_print_info   = subparsers.add_parser('printinfo', help='Print wavetable info.')
+    subparsers_print_info     = subparsers.add_parser('printinfo', parents=[common_parser], help='Print wavetable info.')
     subparsers_print_info.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav or wt file(s) or directory(-ies).')
 
-    subparsers_wt_to_wav    = subparsers.add_parser('wttowav', help='Convert wt wavetables to wav.')
+    subparsers_make_table_wav = subparsers.add_parser('maketable', parents=[common_parser], help='Convert sample to wav wavetable')
+    subparsers_make_table_wav.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav file(s) or directory(-ies).')
+
+    subparsers_make_table_wav = subparsers.add_parser('maketable', parents=[common_parser], help='Convert sample to wt wavetable')
+    subparsers_make_table_wav.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav file(s) or directory(-ies).')
+
+    subparsers_wt_to_wav      = subparsers.add_parser('wttowav', parents=[common_parser], help='Convert wt wavetables to wav.')
     subparsers_wt_to_wav.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wt file(s) or directory(-ies).')
-    subparsers_wt_to_wav.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
-    subparsers_wt_to_wav.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk. Default: \'wavetable (wavetabletools)\'.')
 
-    subparsers_wav_to_wt    = subparsers.add_parser('wavtowt', help='Convert wav wavetables to wt.')
+    subparsers_wav_to_wt      = subparsers.add_parser('wavtowt', parents=[common_parser], help='Convert wav wavetables to wt.')
     subparsers_wav_to_wt.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav file(s) or directory(-ies).')
-    subparsers_wav_to_wt.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
 
-    subparser_add_clm       = subparsers.add_parser('addclm', help='Add clm chunk to a wav files, which will be written to {inpath}_addclm.wav. Note that optional args will be written to all supplied files.')
+    subparser_add_clm         = subparsers.add_parser('addclm', parents=[common_parser], help='Add clm chunk to wav files, which will be written to {inpath}_addclm.wav. Note that optional args will be written to all supplied files.')
     subparser_add_clm.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav file(s) or directory(-ies).')
-    subparser_add_clm.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
-    subparser_add_clm.add_argument('--wavesize', type=int, help='int: Samples per wave cycle. Default: 2048.')
-    subparser_add_clm.add_argument('--waveinterp', type=int, help='int: Interpolation between cycles. Default: 0.')
-    subparser_add_clm.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk. Default if no prior clm info in the wavetable: \'wavetable (wavetabletools)\'.')
 
-    subparser_slicer        = subparsers.add_parser('slicer', help='Slice wavetables and export individual cycles to {inpath}/#.wav.')
+    subparser_slicer          = subparsers.add_parser('slicer', parents=[common_parser], help='Slice wavetables and export individual cycles to {inpath}/#.wav.')
     subparser_slicer.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav or wt file(s) or directory(-ies).')
-    subparser_slicer.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
-    subparser_slicer.add_argument('--wavesize', type=int, help='int: Samples per wave cycle. If not present in .wav clm data, this needs to be supplied.')
 
-    subparser_combiner      = subparsers.add_parser('combiner', help='Combine wav cycles and export to wav and/or wt.')
+    subparser_combiner        = subparsers.add_parser('combiner', parents=[common_parser], help='Combine wav cycles and export to wav and/or wt.')
     subparser_combiner.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to directory(-ies).')
-    subparser_combiner.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
 
-    subparser_dedupe  = subparsers.add_parser('dedupe', help='Remove duplicate cycles, which will be written to {inpath}_dedupe.wav..')
+    subparser_dedupe          = subparsers.add_parser('dedupe', parents=[common_parser], help='Remove duplicate cycles, which will be written to {inpath}_dedupe.wav..')
     subparser_dedupe.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to directory(-ies).')
-    subparser_dedupe.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
-    subparser_dedupe.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk.')
     return parser.parse_args(arg)
 
 
 def main(args):
-    log.info('WTT Version 2025021001.')
-    match args.programme:
-        case 'printinfo'    : print_info(args)
-        case 'wttowav'      : wt_to_wav(args)
-        case 'wavtowt'      : wav_to_wt(args)
-        case 'addclm'       : add_clm(args)
-        case 'slicer'       : slicer(args)
-        case 'combiner'     : combiner(args)
-        case 'dedupe'       : dedupe(args)
+    log.info('WTT Version 2025031300.')
+    arguments = set_arguments_and_defaults(args)
+    match arguments["programme"]:
+        case 'printinfo'    : print_info(arguments)
+        case 'maketablewav' : make_table_wav(arguments)
+        case 'maketablewt'  : make_table_wt(arguments)
+        case 'wttowav'      : wt_to_wav(arguments)
+        case 'wavtowt'      : wav_to_wt(arguments)
+        case 'addclm'       : add_clm(arguments)
+        case 'slicer'       : slicer(arguments)
+        case 'combiner'     : combiner(arguments)
+        case 'dedupe'       : dedupe(arguments)
         case None: get_clas(['-h'])
+
+
+def set_arguments_and_defaults(args):
+    """https://stackoverflow.com/a/404750
+    https://stackoverflow.com/a/42615559
+    """
+    if getattr(sys, 'frozen', False):
+        app_dir = os.path.dirname(sys.executable)
+    else:
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+    force_defaults_path = os.path.join(app_dir, 'force_defaults.json')
+    if os.path.isfile(force_defaults_path):
+        log.info(f'Force defaults {force_defaults_path}')
+        arguments = jread(force_defaults_path)
+        for key, value in args.__dict__.items():
+            arguments[key] = value if value is not None else arguments.get(key, None)
+    else:
+        arguments = args.__dict__
+    return arguments
+
+
+def jread(path):
+    with open(path, 'r', encoding='utf-8') as file:
+        contents = json.load(file)
+    return contents
 
 
 def handler_file_dir(inpaths_from_args):
@@ -379,9 +437,9 @@ def overwrite(outpath, force_overwrite):
         return True
 
 
-def print_info(args):
+def print_info(arguments):
     log.info('Programme print.')
-    inpaths = handler_file_dir(args.inpath)
+    inpaths = handler_file_dir(arguments["inpath"])
     for inpath in inpaths:
         log.info('')
         wavetable_instance = Wavetable()
@@ -398,9 +456,17 @@ def print_info(args):
         wavetable_instance.print_wavetable_info()
 
 
-def wt_to_wav(args):
+def make_table_wav():
+    pass
+
+
+def make_table_wt():
+    pass
+
+
+def wt_to_wav(arguments):
     log.info('Programme wttowav.')
-    inpaths = handler_file_dir(args.inpath)
+    inpaths = handler_file_dir(arguments["inpath"])
     for inpath in inpaths:
         log.info('')
         if not inpath.endswith('.wt'):
@@ -412,17 +478,17 @@ def wt_to_wav(args):
         if skip:
             log.warning('File skipped.')
             continue
-        wavetable_instance.wave_vendor = args.wavevendor.encode(encoding='ansi') if args.wavevendor else wavetable_instance.wave_vendor
+        wavetable_instance.set_data(recalc=True, fmt_sample_rate=arguments["samplerate"], wave_interp=arguments["waveinterp"], wave_size=arguments["wavesize"], wave_vendor=arguments["wavevendor"])
         wavetable_instance.print_wavetable_info()
-        if not overwrite(outpath, args.forceoverwrite):
+        if not overwrite(outpath, arguments["forceoverwrite"]):
             log.warning('File Skipped.')
             continue
         wavetable_instance.wav_write(outpath)
 
 
-def wav_to_wt(args):
+def wav_to_wt(arguments):
     log.info('Programme wavtowt.')
-    inpaths = handler_file_dir(args.inpath)
+    inpaths = handler_file_dir(arguments["inpath"])
     for inpath in inpaths:
         log.info('')
         if not inpath.endswith('.wav'):
@@ -435,15 +501,15 @@ def wav_to_wt(args):
             log.warning('File skipped.')
             continue
         wavetable_instance.print_wavetable_info()
-        if not overwrite(outpath, args.forceoverwrite):
+        if not overwrite(outpath, arguments["forceoverwrite"]):
             log.warning('File Skipped.')
             continue
         wavetable_instance.wt_write(outpath)
 
 
-def add_clm(args):
+def add_clm(arguments):
     log.info('Programme addclm.')
-    inpaths = handler_file_dir(args.inpath)
+    inpaths = handler_file_dir(arguments["inpath"])
     for inpath in inpaths:
         log.info('')
         if not inpath.endswith('.wav'):
@@ -456,22 +522,17 @@ def add_clm(args):
             log.warning('File skipped.')
             continue
         log.info('Set clm data.')
-        if args.waveinterp is not None:
-            wavetable_instance.wave_interp = args.waveinterp
-        if args.wavesize is not None:
-            wavetable_instance.wave_size   = args.wavesize
-        if args.wavevendor:
-            wavetable_instance.wave_vendor = args.wavevendor.encode(encoding='ansi')
+        wavetable_instance.set_data(recalc=True, fmt_sample_rate=arguments["samplerate"], wave_interp=arguments["waveinterp"], wave_size=arguments["wavesize"], wave_vendor=arguments["wavevendor"])
         wavetable_instance.print_wavetable_info()
-        if not overwrite(outpath, args.forceoverwrite):
+        if not overwrite(outpath, arguments["forceoverwrite"]):
             log.warning('File Skipped.')
             continue
         wavetable_instance.wav_write(outpath)
 
 
-def slicer(args):
+def slicer(arguments):
     log.info('Programme slicer.')
-    inpaths = handler_file_dir(args.inpath)
+    inpaths = handler_file_dir(arguments["inpath"])
     for inpath in inpaths:
         log.info('')
         inpath_no_ext, ext = os.path.splitext(inpath)
@@ -487,23 +548,21 @@ def slicer(args):
         if skip:
             log.warning('File skipped.')
             continue
-        if args.wavesize is not None:
-            wavetable_instance.wave_size = args.wavesize
-            log.info(f'Set wave_size: {wavetable_instance.wave_size}')
+        wavetable_instance.set_data(recalc=True, fmt_sample_rate=arguments["samplerate"], wave_interp=arguments["waveinterp"], wave_size=arguments["wavesize"], wave_vendor=arguments["wavevendor"])
         wavetable_instance.print_wavetable_info()
-        if not overwrite(outpath_folder, args.forceoverwrite):
+        if not overwrite(outpath_folder, arguments["forceoverwrite"]):
             log.warning('File Skipped.')
             continue
         wavetable_instance.wav_export_cycles(outpath_folder)
 
 
-def combiner(args):
+def combiner(arguments):
     pass
 
 
-def dedupe(args):
+def dedupe(arguments):
     log.info('Programme dedupe.')
-    inpaths = handler_file_dir(args.inpath)
+    inpaths = handler_file_dir(arguments["inpath"])
     for inpath in inpaths:
         log.info('')
         wavetable_instance = Wavetable()
@@ -516,9 +575,9 @@ def dedupe(args):
             no_dupe = wavetable_instance.deduplicator()
             if no_dupe:
                 continue
-            wavetable_instance.wave_vendor = args.wavevendor.encode(encoding='ansi') if args.wavevendor else wavetable_instance.wave_vendor
+            wavetable_instance.set_data(recalc=True, fmt_sample_rate=arguments["samplerate"], wave_interp=arguments["waveinterp"], wave_size=arguments["wavesize"], wave_vendor=arguments["wavevendor"])
             wavetable_instance.print_wavetable_info()
-            if not overwrite(outpath, args.forceoverwrite):
+            if not overwrite(outpath, arguments["forceoverwrite"]):
                 log.warning('File Skipped.')
                 continue
             wavetable_instance.wav_write(outpath)
@@ -532,7 +591,7 @@ def dedupe(args):
             no_dupe = wavetable_instance.deduplicator()
             if no_dupe:
                 continue
-            if not overwrite(outpath, args.forceoverwrite):
+            if not overwrite(outpath, arguments["forceoverwrite"]):
                 log.warning('File Skipped.')
                 continue
             wavetable_instance.wt_write(outpath)
