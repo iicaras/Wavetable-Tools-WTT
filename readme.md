@@ -1,25 +1,30 @@
 # Wavetable Tools (WTT)
 
-This is a toolset for converting and processing wavetables in `.wav` and `.wt` formats. It is not a tool for creating wavetables from scratch, and it is still a work in progress. As such, please use it carefully. I will not be responsible for any damage this programme may cause.
+This is a toolset written in Python for making, converting and processing wavetables in `.wav` and `.wt` formats. It is not a tool for creating wavetables from scratch, however it can turn samples into wavetables. It was born out of a lack for wavetable creation tools in Bitwig, and out of some annoyences with Vital's exports. It is still a work in progress. As such, please use it carefully. I will not be responsible for any damage this programme may cause.
+
+A Python installation is required.
 
 Available tools are:
 
-- printinfo: Print format information to the console. For `.wt` import, some data is assumed to be able to export to `.wav`.
-- wttowav: Convert `.wt` wavetables to `.wav` format.
-- wavtowt: Convert `.wav` wavetables to `.wt` format.
-- addclm: Add `clm ` data to `.wav` wavetables and export to `..._addclm.wav`. 
-- slicer: Export individual cycles of a wavetable to a folder.
-- dedupe: Removes duplicate cycles from a wavetable if those are in sequence and export to `..._dedupe.wav` or `..._dedupe.wt` (Vital always exports 256 cycles even if the wavetable was made to have fewer cycles and as such makes duplicates of cycles).
+- printinfo: Print wavetable info.
+- maketable: Convert sample to wav wavetable.
+- wttowav:   Convert wt wavetables to wav.
+- wavtowt:   Convert wav wavetables to wt.
+- addclm:    Add clm chunk to wav files, which will be written to `{inpath}_addclm.wav`. Note that optional args will be written to all supplied files.
+- slicer:    Slice wavetables and export individual cycles to `{inpath}/#.wav`.
+- combiner:  Combine wav cycles and export to wav and/or wt.
+- dedupe:    Remove duplicate cycles, which will be written to `{inpath}_dedupe.wav`. (Vital always exports 256 cycles even if the wavetable was made to have fewer cycles and as such makes duplicates of cycles).
 
 Work in progress:
 - combiner: Imports individual cycles from a folder and exports to a single wavetable file.
+- use of notes to specify `wave_size` and perhaps use Sox integration to resample to 2048 samples per cycle.
 
 See [this article](https://gist.github.com/iicaras/f63dc9fcc3f9a83ccaf2de3fbc9fbb5a) for format specifications and creation guides.
 
 ## printinfo
 
 ```
-usage: pmain.py printinfo [-h] inpath [inpath ...]
+usage: wtt.py printinfo [-h] inpath [inpath ...]
 
 positional arguments:
   inpath      str: Input path(s) to wav or wt file(s) or directory(-ies).
@@ -31,110 +36,53 @@ options:
 Example:
 
 ```
-python main.py printinfo "Basic Shapes.wav"
+python wtt.py printinfo "some_wavetable.wav"
 ```
+
+## maketable
+
+```
+usage: wtt.py maketable [-h] [-f] [--samplerate SAMPLERATE] [--waveinterp WAVEINTERP] [--wavesize WAVESIZE] [--wavevendor WAVEVENDOR] [--wt] [--right] inpath [inpath ...]
+
+positional arguments:
+  inpath                str: Input path(s) to wav file(s) or directory(-ies).
+
+options:
+  -h, --help            show this help message and exit
+  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
+  --samplerate SAMPLERATE
+                        int: Change sample rate. This does not resample the file. Sample rate is meaningless for the wavetable due to wave_size, but a higher sample rate will playback a higher note outside
+                        of wavetable synths.
+  --waveinterp WAVEINTERP
+                        int: Interpolation between cycles. Default: 0.
+  --wavesize WAVESIZE   int: Samples per wave cycle. 2048 is assumed if no clm data is present.
+  --wavevendor WAVEVENDOR
+                        str: Comment at the end of clm chunk.
+  --wt                  bool: Also export wt file.
+  --right               bool: use right channel instead of left.
+```
+
+Example:
+
+`python wtt.py maketable "some_wavetable.wav" --wt`
 
 ## wttowav
 
 ```
-usage: main.py wttowav [-h] [-f] [--wavevendor WAVEVENDOR] inpath [inpath ...]
+usage: wtt.py wttowav [-h] [-f] [--samplerate SAMPLERATE] [--waveinterp WAVEINTERP] [--wavesize WAVESIZE] [--wavevendor WAVEVENDOR] inpath [inpath ...]
 
 positional arguments:
   inpath                str: Input path(s) to wt file(s) or directory(-ies).
 
 options:
   -h, --help            show this help message and exit
-  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default:
-                        false.
-  --wavevendor WAVEVENDOR
-                        str: Comment at the end of clm chunk. Default: 'wavetable (wavetabletools)'.
-```
-
-Example:
-
-```
-python main.py wttowav "Standard Four.wt"
-```
-
-## wavtowt
-
-```
-usage: main.py wavtowt [-h] [-f] inpath [inpath ...]
-
-positional arguments:
-  inpath                str: Input path(s) to wav file(s) or directory(-ies).
-
-options:
-  -h, --help            show this help message and exit
   -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
-```
-
-Example:
-
-```
-python main.py wavtowt "Basic Shapes.wav"
-```
-
-## addclm
-
-```
-usage: main.py addclm [-h] [-f] [--wavesize WAVESIZE] [--waveinterp WAVEINTERP]
-                      [--wavevendor WAVEVENDOR]
-                      inpath [inpath ...]
-
-positional arguments:
-  inpath                str: Input path(s) to wav file(s) or directory(-ies).
-
-options:
-  -h, --help            show this help message and exit
-  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default:
-                        false.
-  --wavesize WAVESIZE   int: Samples per wave cycle. Default: 2048.
+  --samplerate SAMPLERATE
+                        int: Change sample rate. This does not resample the file. Sample rate is meaningless for the wavetable due to wave_size, but a higher sample rate will playback a higher note outside
+                        of wavetable synths.
   --waveinterp WAVEINTERP
                         int: Interpolation between cycles. Default: 0.
-  --wavevendor WAVEVENDOR
-                        str: Comment at the end of clm chunk. Default if no prior clm info in the
-                        wavetable: 'wavetable (wavetabletools)'.
-```
-
-Example:
-
-```
-python main.py addclm "Custom.wav" --wavevendor "My Wavetable"
-```
-
-## slicer
-
-```
-usage: main.py slicer [-h] [-f] [--wavesize WAVESIZE] inpath [inpath ...]
-
-positional arguments:
-  inpath                str: Input path(s) to wav or wt file(s) or directory(-ies).
-
-options:
-  -h, --help            show this help message and exit
-  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
-  --wavesize WAVESIZE   int: Samples per wave cycle. If not present in .wav clm data, this needs to be supplied.
-```
-
-Example:
-
-```
-python main.py slicer "Basic Shapes.wav"
-```
-
-## dedupe
-
-```
-usage: main.py dedupe [-h] [-f] [--wavevendor WAVEVENDOR] inpath [inpath ...]
-
-positional arguments:
-  inpath                str: Input path(s) to directory(-ies).
-
-options:
-  -h, --help            show this help message and exit
-  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default:
-                        false.
+  --wavesize WAVESIZE   int: Samples per wave cycle. 2048 is assumed if no clm data is present.
   --wavevendor WAVEVENDOR
                         str: Comment at the end of clm chunk.
 ```
@@ -142,5 +90,113 @@ options:
 Example:
 
 ```
-python main.py dedupe "Custom.wav"
+python wtt.py wttowav "some_wavetable.wt"
+```
+
+## wavtowt
+
+```
+usage: wtt.py wavtowt [-h] [-f] [--samplerate SAMPLERATE] [--waveinterp WAVEINTERP] [--wavesize WAVESIZE] [--wavevendor WAVEVENDOR] inpath [inpath ...]
+
+positional arguments:
+  inpath                str: Input path(s) to wav file(s) or directory(-ies).
+
+options:
+  -h, --help            show this help message and exit
+  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
+  --samplerate SAMPLERATE
+                        int: Change sample rate. This does not resample the file. Sample rate is meaningless for the wavetable due to wave_size, but a higher sample rate will playback a higher note outside
+                        of wavetable synths.
+  --waveinterp WAVEINTERP
+                        int: Interpolation between cycles. Default: 0.
+  --wavesize WAVESIZE   int: Samples per wave cycle. 2048 is assumed if no clm data is present.
+  --wavevendor WAVEVENDOR
+                        str: Comment at the end of clm chunk.
+```
+
+Example:
+
+```
+python wtt.py wavtowt "some_wavetable.wav"
+```
+
+## addclm
+
+```
+usage: wtt.py addclm [-h] [-f] [--samplerate SAMPLERATE] [--waveinterp WAVEINTERP] [--wavesize WAVESIZE] [--wavevendor WAVEVENDOR] inpath [inpath ...]
+
+positional arguments:
+  inpath                str: Input path(s) to wav file(s) or directory(-ies).
+
+options:
+  -h, --help            show this help message and exit
+  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
+  --samplerate SAMPLERATE
+                        int: Change sample rate. This does not resample the file. Sample rate is meaningless for the wavetable due to wave_size, but a higher sample rate will playback a higher note outside
+                        of wavetable synths.
+  --waveinterp WAVEINTERP
+                        int: Interpolation between cycles. Default: 0.
+  --wavesize WAVESIZE   int: Samples per wave cycle. 2048 is assumed if no clm data is present.
+  --wavevendor WAVEVENDOR
+                        str: Comment at the end of clm chunk.
+```
+
+Example:
+
+```
+python wtt.py addclm "some_wavetable.wav" --wavevendor "wavetable (myname)"
+```
+
+## slicer
+
+```
+usage: wtt.py slicer [-h] [-f] [--samplerate SAMPLERATE] [--waveinterp WAVEINTERP] [--wavesize WAVESIZE] [--wavevendor WAVEVENDOR] inpath [inpath ...]
+
+positional arguments:
+  inpath                str: Input path(s) to wav or wt file(s) or directory(-ies).
+
+options:
+  -h, --help            show this help message and exit
+  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
+  --samplerate SAMPLERATE
+                        int: Change sample rate. This does not resample the file. Sample rate is meaningless for the wavetable due to wave_size, but a higher sample rate will playback a higher note outside
+                        of wavetable synths.
+  --waveinterp WAVEINTERP
+                        int: Interpolation between cycles. Default: 0.
+  --wavesize WAVESIZE   int: Samples per wave cycle. 2048 is assumed if no clm data is present.
+  --wavevendor WAVEVENDOR
+                        str: Comment at the end of clm chunk.
+```
+
+Example:
+
+```
+python wtt.py slicer "some_wavetable.wav"
+```
+
+## dedupe
+
+```
+usage: wtt.py dedupe [-h] [-f] [--samplerate SAMPLERATE] [--waveinterp WAVEINTERP] [--wavesize WAVESIZE] [--wavevendor WAVEVENDOR] inpath [inpath ...]
+
+positional arguments:
+  inpath                str: Input path(s) to directory(-ies).
+
+options:
+  -h, --help            show this help message and exit
+  -f, --forceoverwrite  bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.
+  --samplerate SAMPLERATE
+                        int: Change sample rate. This does not resample the file. Sample rate is meaningless for the wavetable due to wave_size, but a higher sample rate will playback a higher note outside
+                        of wavetable synths.
+  --waveinterp WAVEINTERP
+                        int: Interpolation between cycles. Default: 0.
+  --wavesize WAVESIZE   int: Samples per wave cycle. 2048 is assumed if no clm data is present.
+  --wavevendor WAVEVENDOR
+                        str: Comment at the end of clm chunk.
+```
+
+Example:
+
+```
+python wtt.py dedupe "some_wavetable.wav"
 ```
