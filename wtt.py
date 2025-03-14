@@ -364,17 +364,17 @@ def get_clas(arg=None):
     desc   = 'Wavetable Tools: Various tools to convert or process wavetables in wav or wt format.'
     parser = argparse.ArgumentParser(prog='main.py', description=desc, epilog='')
 
+    subparsers = parser.add_subparsers(dest="programme", help='Available programmes.')
+
+    subparsers_print_info     = subparsers.add_parser('printinfo', help='Print wavetable info.')
+    subparsers_print_info.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav or wt file(s) or directory(-ies).')
+
     common_parser = argparse.ArgumentParser(add_help=False)
     common_parser.add_argument('-f', '--forceoverwrite', action='store_true', help='bool: Force-overwrite target file(s) if file(s) already exist(s). Default: false.')
     common_parser.add_argument('--samplerate', type=int, help='int: Change sample rate. This does not resample the file. Sample rate is meaningless for the wavetable due to wave_size, but a higher sample rate will playback a higher note outside of wavetable synths.')
     common_parser.add_argument('--waveinterp', type=int, help='int: Interpolation between cycles. Default: 0.')
-    common_parser.add_argument('--wavesize', type=int, help='int: Samples per wave cycle. If not present in .wav clm data, this needs to be supplied.')
+    common_parser.add_argument('--wavesize', type=int, help='int: Samples per wave cycle. 2048 is assumed if no clm data is present.')
     common_parser.add_argument('--wavevendor', type=str, help='str: Comment at the end of clm chunk.')
-
-    subparsers = parser.add_subparsers(dest="programme", help='Available programmes.')
-
-    subparsers_print_info     = subparsers.add_parser('printinfo', parents=[common_parser], help='Print wavetable info.')
-    subparsers_print_info.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav or wt file(s) or directory(-ies).')
 
     subparsers_make_table = subparsers.add_parser('maketable', parents=[common_parser], help='Convert sample to wav wavetable.')
     subparsers_make_table.add_argument('inpath', type=str, nargs='+', help='str: Input path(s) to wav file(s) or directory(-ies).')
