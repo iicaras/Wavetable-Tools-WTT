@@ -362,7 +362,7 @@ def get_clas(arg=None):
     """return: Argparse class.
     """
     desc   = 'Wavetable Tools: Various tools to convert or process wavetables in wav or wt format.'
-    parser = argparse.ArgumentParser(prog='main.py', description=desc, epilog='')
+    parser = argparse.ArgumentParser(prog='wtt.py', description=desc, epilog='')
 
     subparsers = parser.add_subparsers(dest="programme", help='Available programmes.')
 
