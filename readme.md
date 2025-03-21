@@ -15,6 +15,12 @@ Available tools are:
 - combiner:  Combine wav cycles and export to wav and/or wt.
 - dedupe:    Remove duplicate cycles, which will be written to `{inpath}_dedupe.wav`. (Vital always exports 256 cycles even if the wavetable was made to have fewer cycles and as such makes duplicates of cycles).
 
+It is possible to process multiple wavetables in bulk simply by supplying multiple files. For instance,
+
+```
+python wtt.py printinfo "some_wavetable.wav" "some_other_wavetable.wav" "another_wavetable.wav"
+```
+
 Work in progress:
 - combiner: Imports individual cycles from a folder and exports to a single wavetable file.
 - use of notes to specify `wave_size` and perhaps use Sox integration to resample to 2048 samples per cycle.
