@@ -1,19 +1,19 @@
 # Wavetable Tools (WTT)
 
-This is a toolset written in Python for making, converting and processing wavetables in `.wav` and `.wt` formats. It is not a tool for creating wavetables from scratch, however it can turn samples into wavetables. It was born out of a lack for wavetable creation tools in Bitwig, and out of some annoyences with Vital's exports. It is still a work in progress. As such, please use it carefully. I will not be responsible for any damage this programme may cause.
+This is a toolset written in Python for making, converting and processing wavetables from samples in `.wav` and `.wt` formats. It was born out of a lack for wavetable creation tools in Bitwig, and out of some annoyences with Vital's exports. It is still a work in progress. As such, please use it carefully. See [this article](https://gist.github.com/iicaras/f63dc9fcc3f9a83ccaf2de3fbc9fbb5a) for format specifications and creation guides.
 
 A Python installation is required.
 
 Available tools are:
 
-- printinfo: Print wavetable info.
-- maketable: Convert sample to wav wavetable.
-- wttowav:   Convert wt wavetables to wav.
-- wavtowt:   Convert wav wavetables to wt.
-- addclm:    Add clm chunk to wav files, which will be written to `{inpath}_addclm.wav`. Note that optional args will be written to all supplied files.
-- slicer:    Slice wavetables and export individual cycles to `{inpath}/#.wav`.
-- combiner:  Combine wav cycles and export to wav and/or wt.
-- dedupe:    Remove duplicate cycles, which will be written to `{inpath}_dedupe.wav`. (Vital always exports 256 cycles even if the wavetable was made to have fewer cycles and as such makes duplicates of cycles).
+- `printinfo`: Print wavetable info.
+- `maketable`: Convert sample to wavetable.
+- `wttowav`:   Convert wt wavetables to wav.
+- `wavtowt`:   Convert wav wavetables to wt.
+- `addclm`:    Add clm chunk to wav files, which will be written to `{inpath}_addclm.wav`. Note that optional args will be written to all supplied files.
+- `slicer`:    Slice wavetables and export individual cycles to `{inpath}/#.wav`.
+- `combiner`:  (W.I.P) Combine wav cycles and export to wav and/or wt.
+- `dedupe`:    Remove duplicate cycles, which will be written to `{inpath}_dedupe.wav`. (Vital always exports 256 cycles even if the wavetable was made to have fewer cycles and as such makes duplicates of cycles).
 
 It is possible to process multiple wavetables in bulk simply by supplying multiple files. For instance,
 
@@ -21,11 +21,10 @@ It is possible to process multiple wavetables in bulk simply by supplying multip
 python wtt.py printinfo "some_wavetable.wav" "some_other_wavetable.wav" "another_wavetable.wav"
 ```
 
-Work in progress:
+TODO:
 - combiner: Imports individual cycles from a folder and exports to a single wavetable file.
 - use of notes to specify `wave_size` and perhaps use Sox integration to resample to 2048 samples per cycle.
-
-See [this article](https://gist.github.com/iicaras/f63dc9fcc3f9a83ccaf2de3fbc9fbb5a) for format specifications and creation guides.
+- remove assumed data from `printinfo` when a `.wt` file is imported.
 
 ## printinfo
 
@@ -46,6 +45,10 @@ python wtt.py printinfo "some_wavetable.wav"
 ```
 
 ## maketable
+
+TODO:
+
+- Add notename recognition for resampling.
 
 ```
 usage: wtt.py maketable [-h] [-f] [--samplerate SAMPLERATE] [--waveinterp WAVEINTERP] [--wavesize WAVESIZE] [--wavevendor WAVEVENDOR] [--wt] [--right] inpath [inpath ...]
@@ -179,6 +182,10 @@ Example:
 ```
 python wtt.py slicer "some_wavetable.wav"
 ```
+
+## combiner
+
+W.I.P.
 
 ## dedupe
 
